@@ -11,6 +11,9 @@ export enum Category {
   TIFFINS = 'Tiffins'
 }
 
+export type OrderStatus = 'Placed' | 'Confirmed' | 'Preparing' | 'Rider_Assigned' | 'Picked' | 'Delivered' | 'Cancelled';
+export type PaymentStatus = 'Pending' | 'Paid';
+
 export interface MenuItem {
   id: string;
   name: string;
@@ -26,10 +29,12 @@ export interface Restaurant {
   name: string;
   image: string;
   isOpen: boolean;
-  openTime: string; // HH:mm format
-  closeTime: string; // HH:mm format
+  openTime: string;
+  closeTime: string;
   adminUser: string;
   adminPass: string;
+  phone: string;
+  location?: { lat: number; lng: number };
 }
 
 export interface CartItem extends MenuItem {
@@ -38,16 +43,40 @@ export interface CartItem extends MenuItem {
 
 export interface Order {
   id: string;
-  restaurantId: string;
-  restaurantName: string;
-  items: CartItem[];
-  total: number;
+  customerId: string;
   customerName: string;
   customerPhone: string;
+  restaurantId: string;
+  restaurantName: string;
+  riderId?: string;
+  items: CartItem[];
+  subtotal: number;
+  deliveryFee: number;
+  platformFee: number;
+  total: number;
   address: string;
   locationUrl: string;
-  status: 'Pending' | 'Delivered';
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethod: 'UPI' | 'COD';
   createdAt: string;
+}
+
+export interface Settlement {
+  date: string;
+  totalOrders: number;
+  grossSales: number;
+  platformEarnings: number;
+  restaurantPayout: number;
+  riderPayout: number;
+}
+
+export interface User {
+  id: string;
+  phone: string;
+  name: string;
+  role: 'Customer' | 'Restaurant' | 'Admin';
+  restaurantId?: string; // Optional, linked for restaurant admins
 }
 
 export interface AppData {
@@ -55,4 +84,5 @@ export interface AppData {
   menuItems: MenuItem[];
   orders: Order[];
   lastOrderId: number;
+  currentUser: User | null;
 }
