@@ -1,11 +1,26 @@
-<div align="center">
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+# 🏪 ManaFood - Warangal Startup
 
-  <h1>Built with AI Studio</h2>
+Local food delivery platform for Warangal.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## 🚀 Hosting Instructions
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+### Option A: Vercel (Recommended)
+1. Install Vercel CLI: `npm i -g vercel`
+2. Run `vercel` in the project folder.
+3. Follow prompts. Done!
 
-</div>
+### Option B: Netlify
+1. Drag and drop the `dist` folder (after running `npm run build`) into the Netlify dashboard.
+
+## 🛠️ Local Development
+1. Install dependencies: `npm install`
+2. Start development server: `npm run dev`
+3. Build for production: `npm run build`
+
+## 📱 Features
+- WhatsApp Order Integration
+- LocalStorage Cart
+- Multi-Admin Panel (Madhuriram's & Baarista)
+- GPS Location Detection
+- Mobile-First Design
