@@ -1,5 +1,5 @@
 {
-  "name": "ManaFood - Warangal01",
+  "name": "ManaFood - Warangal",
   "description": "A high-performance local food delivery application for Warangal, featuring restaurant management, real-time cart handling, and WhatsApp order integration.",
   "requestFramePermissions": [
     "geolocation"
