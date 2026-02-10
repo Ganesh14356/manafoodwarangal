@@ -54,6 +54,13 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
     });
   }, [onDataChange]);
 
+  const stats = useMemo(() => {
+    if (!isSuperAdmin) return null;
+    const totalRev = data.orders.filter(o => o.status === 'Delivered').reduce((sum, o) => sum + o.total, 0);
+    const platformFees = data.orders.filter(o => o.status === 'Delivered').reduce((sum, o) => sum + o.platformFee, 0);
+    return { totalRev, platformFees, orderCount: data.orders.length };
+  }, [data.orders, isSuperAdmin]);
+
   const liveStatus = useMemo(() => {
     if (!restaurant) return null;
     if (!restaurant.isOpen) return { label: 'OFFLINE', reason: 'Manually hidden', color: 'text-red-500', bg: 'bg-red-50' };
@@ -198,12 +205,12 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
   };
 
   return (
-    <div className="p-4 space-y-6 pb-24 bg-gray-50 min-h-screen max-w-md mx-auto relative">
+    <div className="p-4 space-y-6 pb-24 bg-gray-50 min-h-screen max-w-md mx-auto relative overflow-x-hidden">
       <div className="flex justify-between items-start">
         <div className="space-y-1">
           <Link to="/" className="text-[10px] font-black text-gray-400 uppercase tracking-widest">← Back to App</Link>
           <p className="text-[10px] font-black text-green-600 uppercase tracking-widest">
-            {isSuperAdmin ? 'Master Control' : 'Partner Dashboard'}
+            {isSuperAdmin ? 'Master Dashboard' : 'Partner Dashboard'}
           </p>
           <h2 className="text-2xl font-black text-gray-900 tracking-tighter">
             {isSuperAdmin ? 'MANAFOOD HQ' : restaurant?.name}
@@ -215,6 +222,19 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
           </button>
         )}
       </div>
+
+      {isSuperAdmin && stats && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-black p-4 rounded-3xl shadow-xl space-y-1">
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Total Revenue</p>
+            <p className="text-xl font-black text-white tracking-tighter">₹{stats.totalRev}</p>
+          </div>
+          <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm space-y-1">
+            <p className="text-[8px] font-black text-green-600 uppercase tracking-widest">Platform Fees</p>
+            <p className="text-xl font-black text-gray-900 tracking-tighter">₹{stats.platformFees}</p>
+          </div>
+        </div>
+      )}
 
       {!isSuperAdmin && restaurant && liveStatus && (
         <div className={`p-5 rounded-[35px] border border-gray-100 shadow-sm ${liveStatus.bg} flex justify-between items-center`}>
@@ -244,7 +264,9 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
       {activeTab === 'bookings' && (
         <div className="space-y-4 animate-slide-up">
           {filteredOrders.length === 0 ? (
-            <p className="text-center py-20 text-[10px] font-black text-gray-300 uppercase tracking-widest">No active bookings</p>
+            <div className="bg-white rounded-[40px] p-10 text-center border border-dashed border-gray-200">
+               <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">No active bookings recorded</p>
+            </div>
           ) : (
             filteredOrders.map(order => (
               <div key={order.id} className="bg-white p-5 rounded-[35px] border border-gray-100 shadow-sm space-y-4">
@@ -252,7 +274,12 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
                   <div>
                     <h4 className="font-black text-xl tracking-tighter">#{order.id}</h4>
                     <p className="text-[10px] text-gray-400 font-black uppercase">{order.customerName} • {order.customerPhone}</p>
-                    {isSuperAdmin && <p className="text-[8px] font-bold text-green-600 uppercase">{order.restaurantName}</p>}
+                    {isSuperAdmin && (
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        <p className="text-[8px] font-black text-green-600 uppercase tracking-widest">{order.restaurantName}</p>
+                      </div>
+                    )}
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-black text-green-600">₹{order.total}</div>
@@ -263,8 +290,8 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
                 </div>
                 <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2">
                    <div className="flex justify-between items-center text-[9px] font-black uppercase text-gray-400">
-                     <span>Items</span>
-                     <a href={order.locationUrl} target="_blank" className="text-blue-500 font-black">Open GPS</a>
+                     <span>Items Overview</span>
+                     <a href={order.locationUrl} target="_blank" className="text-blue-500 font-black underline">TRACK GPS</a>
                    </div>
                    <div className="text-[10px] font-bold text-gray-600">
                      {order.items.map(i => `${i.name} (x${i.quantity})`).join(', ')}
@@ -287,11 +314,14 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
       {activeTab === 'menu' && (
         <div className="space-y-4 animate-slide-up">
           {isSuperAdmin && (
-            <div className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
-               <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                 Managing: <span className="text-black">{data.restaurants.find(r => r.id === selectedPartnerId)?.name || 'Select a Partner'}</span>
-               </p>
-               <button onClick={() => setActiveTab('partners')} className="text-[10px] font-black uppercase text-blue-500">Change Partner</button>
+            <div className="bg-white p-4 rounded-3xl border border-gray-100 flex items-center justify-between shadow-sm">
+               <div className="flex flex-col">
+                 <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Current Partner</p>
+                 <span className="text-sm font-black text-black uppercase tracking-tighter">
+                   {data.restaurants.find(r => r.id === selectedPartnerId)?.name || 'NONE SELECTED'}
+                 </span>
+               </div>
+               <button onClick={() => setActiveTab('partners')} className="px-4 py-2 bg-blue-50 text-[10px] font-black uppercase text-blue-500 rounded-xl">Switch</button>
             </div>
           )}
 
@@ -301,13 +331,15 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
               className="w-full bg-black text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"/></svg>
-              Add New Item
+              Add New Dish
             </button>
           )}
           
           <div className="grid gap-3">
             {displayedMenuItems.length === 0 ? (
-                <p className="text-center py-20 text-[10px] font-black text-gray-300 uppercase">No menu items found</p>
+                <div className="bg-white rounded-[40px] p-10 text-center border border-dashed border-gray-200">
+                    <p className="text-[10px] font-black text-gray-300 uppercase">No menu items configured</p>
+                </div>
             ) : (
                 displayedMenuItems.map(item => (
                     <div key={item.id} className="bg-white p-3 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-4">
@@ -317,7 +349,7 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
                         <p className="text-[10px] font-black text-green-600">₹{item.price}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                        <button onClick={() => toggleStock(item.id, item.inStock)} title="Toggle Stock" className={`p-2 rounded-xl ${item.inStock ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-100'}`}>
+                        <button onClick={() => toggleStock(item.id, item.inStock)} className={`p-2 rounded-xl ${item.inStock ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-100'}`}>
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"/></svg>
                         </button>
                         <button onClick={() => handleEditItem(item)} className="p-2 text-blue-600 bg-blue-50 rounded-xl">
@@ -341,49 +373,51 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
              className="w-full bg-green-600 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2"
            >
              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"/></svg>
-             Add New Partner
+             Onboard New Partner
            </button>
 
-           <div className="grid gap-4">
+           <div className="grid gap-5">
              {data.restaurants.map(p => (
-               <div key={p.id} className="bg-white p-5 rounded-[35px] border border-gray-100 shadow-sm space-y-4">
+               <div key={p.id} className="bg-white p-5 rounded-[40px] border border-gray-100 shadow-sm space-y-4 transition-all hover:border-gray-300">
                   <div className="flex items-center gap-4">
-                    <img src={p.image} className="w-16 h-16 rounded-2xl object-cover" />
+                    <img src={p.image} className="w-16 h-16 rounded-3xl object-cover shadow-sm" />
                     <div className="flex-1">
-                        <h4 className="font-black text-gray-900 uppercase tracking-tight">{p.name}</h4>
-                        <p className="text-[9px] font-bold text-gray-400">{p.phone}</p>
+                        <h4 className="font-black text-gray-900 uppercase tracking-tight text-lg leading-none">{p.name}</h4>
+                        <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest">{p.phone}</p>
                     </div>
-                    <div className="flex gap-1">
-                        <button onClick={() => handleEditPartner(p)} title="Edit Partner" className="p-2 bg-gray-50 text-gray-400 rounded-xl"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>
-                        <button onClick={() => handleDeletePartner(p.id)} title="Delete Partner" className="p-2 bg-red-50 text-red-400 rounded-xl"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                    <div className="flex gap-1.5">
+                        <button onClick={() => handleEditPartner(p)} className="p-2.5 bg-gray-50 text-gray-400 rounded-xl active:bg-blue-50 active:text-blue-500"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>
+                        <button onClick={() => handleDeletePartner(p.id)} className="p-2.5 bg-red-50 text-red-400 rounded-xl"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
                     </div>
                   </div>
 
-                  <div className="bg-gray-900 p-4 rounded-3xl space-y-3">
+                  <div className="bg-gray-900 p-5 rounded-[30px] space-y-4 shadow-inner">
                     <div className="flex justify-between items-center">
-                        <span className="text-[8px] font-black uppercase text-gray-500 tracking-widest">Sub-Admin Access</span>
+                        <span className="text-[8px] font-black uppercase text-gray-500 tracking-widest">Access Control</span>
                         <button 
                             onClick={() => toggleManualStatus(p.id)}
-                            className={`text-[8px] font-black uppercase px-2 py-1 rounded transition-colors ${p.isOpen ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}
+                            className={`text-[8px] font-black uppercase px-3 py-1.5 rounded-full transition-all active:scale-95 ${p.isOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}
                         >
-                            {p.isOpen ? 'LIVE • TAP TO STOP' : 'OFFLINE • TAP TO GO LIVE'}
+                            {p.isOpen ? 'GO OFFLINE' : 'GO ONLINE'}
                         </button>
                     </div>
+                    
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-white/5 p-3 rounded-2xl">
-                            <p className="text-[7px] font-black text-gray-500 uppercase mb-0.5">Partner ID</p>
-                            <p className="text-[11px] font-mono font-bold text-white tracking-wider select-all">{p.adminUser}</p>
+                        <div className="bg-white/5 p-4 rounded-2xl border border-white/5 group">
+                            <p className="text-[7px] font-black text-gray-500 uppercase mb-1">Username</p>
+                            <p className="text-[11px] font-mono font-bold text-white tracking-widest break-all select-all">{p.adminUser}</p>
                         </div>
-                        <div className="bg-white/5 p-3 rounded-2xl">
-                            <p className="text-[7px] font-black text-gray-500 uppercase mb-0.5">Password</p>
-                            <p className="text-[11px] font-mono font-bold text-white tracking-wider select-all">{p.adminPass}</p>
+                        <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                            <p className="text-[7px] font-black text-gray-500 uppercase mb-1">Password</p>
+                            <p className="text-[11px] font-mono font-bold text-white tracking-widest break-all select-all">{p.adminPass}</p>
                         </div>
                     </div>
+
                     <button 
                         onClick={() => managePartnerMenu(p.id)}
-                        className="w-full bg-white text-black py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest"
+                        className="w-full bg-white text-black py-4 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg active:bg-gray-200"
                     >
-                        Manage Items & Menu
+                        MANAGE RESTAURANT MENU
                     </button>
                   </div>
                </div>
@@ -392,10 +426,10 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
         </div>
       )}
 
-      {/* Partner Modal */}
+      {/* MODALS */}
       {showPartnerModal && (
         <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-sm rounded-[40px] p-8 space-y-6 animate-slide-up max-h-[90vh] overflow-y-auto">
+          <div className="bg-white w-full max-w-sm rounded-[40px] p-8 space-y-6 animate-slide-up max-h-[90vh] overflow-y-auto no-scrollbar">
             <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">{editingPartner ? 'Update Partner' : 'New Partner'}</h3>
             <form onSubmit={handleSavePartner} className="space-y-4">
               <div className="space-y-1">
@@ -408,11 +442,11 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase text-gray-400 ml-1">Admin Username</label>
+                  <label className="text-[9px] font-black uppercase text-gray-400 ml-1">Admin User</label>
                   <input required className="w-full bg-gray-50 p-4 rounded-2xl font-bold text-sm outline-none" placeholder="User ID" value={partnerForm.adminUser} onChange={e => setPartnerForm({...partnerForm, adminUser: e.target.value})} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase text-gray-400 ml-1">Admin Password</label>
+                  <label className="text-[9px] font-black uppercase text-gray-400 ml-1">Password</label>
                   <input required className="w-full bg-gray-50 p-4 rounded-2xl font-bold text-sm outline-none" placeholder="Pass123" value={partnerForm.adminPass} onChange={e => setPartnerForm({...partnerForm, adminPass: e.target.value})} />
                 </div>
               </div>
@@ -420,32 +454,25 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
                 <label className="text-[9px] font-black uppercase text-gray-400 ml-1">Phone</label>
                 <input required className="w-full bg-gray-50 p-4 rounded-2xl font-bold text-sm outline-none" placeholder="9876543210" value={partnerForm.phone} onChange={e => setPartnerForm({...partnerForm, phone: e.target.value})} />
               </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-black uppercase text-gray-400 ml-1">Full Address</label>
-                <textarea rows={2} className="w-full bg-gray-50 p-4 rounded-2xl font-bold text-sm outline-none" placeholder="Shop address..." value={partnerForm.address} onChange={e => setPartnerForm({...partnerForm, address: e.target.value})} />
-              </div>
               <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-1">
-                   <label className="text-[9px] font-black uppercase text-gray-400 ml-1">Open Time</label>
+                   <label className="text-[9px] font-black uppercase text-gray-400 ml-1">Open</label>
                    <input type="time" className="w-full bg-gray-50 p-4 rounded-2xl font-bold text-sm outline-none" value={partnerForm.openTime} onChange={e => setPartnerForm({...partnerForm, openTime: e.target.value})} />
                  </div>
                  <div className="space-y-1">
-                   <label className="text-[9px] font-black uppercase text-gray-400 ml-1">Close Time</label>
+                   <label className="text-[9px] font-black uppercase text-gray-400 ml-1">Close</label>
                    <input type="time" className="w-full bg-gray-50 p-4 rounded-2xl font-bold text-sm outline-none" value={partnerForm.closeTime} onChange={e => setPartnerForm({...partnerForm, closeTime: e.target.value})} />
                  </div>
               </div>
               <div className="flex gap-2 pt-4">
                 <button type="button" onClick={() => setShowPartnerModal(false)} className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Cancel</button>
-                <button type="submit" className="flex-[2] bg-black text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl">
-                    {editingPartner ? 'Update Partner' : 'Create Partner'}
-                </button>
+                <button type="submit" className="flex-[2] bg-black text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl">{editingPartner ? 'Update' : 'Create'}</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Item Modal */}
       {showMenuModal && (
         <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-sm rounded-[40px] p-8 space-y-6 animate-slide-up">
@@ -476,31 +503,6 @@ const Admin: React.FC<AdminProps> = ({ data, onDataChange, currentUser }) => {
                 <button type="submit" className="flex-[2] bg-black text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl">Save Item</button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {showSettingsModal && (
-        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-sm rounded-[40px] p-8 space-y-6 animate-slide-up">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Booking Hours</h3>
-              <button onClick={() => setShowSettingsModal(false)} className="p-2 bg-gray-100 rounded-full"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <input type="time" className="w-full bg-gray-50 p-4 rounded-2xl font-black text-sm" value={editTimes.openTime} onChange={e => setEditTimes({...editTimes, openTime: e.target.value})} />
-              <input type="time" className="w-full bg-gray-50 p-4 rounded-2xl font-black text-sm" value={editTimes.closeTime} onChange={e => setEditTimes({...editTimes, closeTime: e.target.value})} />
-            </div>
-            <button 
-              onClick={() => {
-                storage.updateRestaurantStatus(restaurantId!, { openTime: editTimes.openTime, closeTime: editTimes.closeTime });
-                setShowSettingsModal(false);
-                onDataChange();
-              }} 
-              className="w-full bg-black text-white py-5 rounded-[25px] font-black uppercase text-[11px] shadow-xl"
-            >
-              Update Hours
-            </button>
           </div>
         </div>
       )}
