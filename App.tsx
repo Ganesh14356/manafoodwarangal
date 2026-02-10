@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { HashRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { storage } from './services/storage';
 import { AppData, CartItem, Restaurant, MenuItem, User } from './types';
 import Home from './views/Home';
@@ -9,6 +9,7 @@ import Checkout from './views/Checkout';
 import Admin from './views/Admin';
 import Login from './views/Login';
 import Tracking from './views/Tracking';
+import ActiveOrderTracker from './components/ActiveOrderTracker';
 
 const App: React.FC = () => {
   const [data, setData] = useState<AppData>(storage.getData());
@@ -48,9 +49,27 @@ const App: React.FC = () => {
     });
   };
 
-  if (!data.currentUser) {
-    return <Login onLogin={handleLogin} />;
-  }
+  const updateCart = (id: string, delta: number) => {
+    setCart(prev => {
+      return prev.map(item => {
+        if (item.id === id) {
+          const newQty = item.quantity + delta;
+          return newQty > 0 ? { ...item, quantity: newQty } : null;
+        }
+        return item;
+      }).filter((item): item is CartItem => item !== null);
+    });
+  };
+
+  useEffect(() => {
+    localStorage.setItem('manafood_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    return storage.subscribe(() => {
+      setData(storage.getData());
+    });
+  }, []);
 
   return (
     <HashRouter>
@@ -61,23 +80,31 @@ const App: React.FC = () => {
              <span className="text-[8px] uppercase font-black text-gray-300 tracking-[0.2em] -mt-1">Warangal</span>
            </Link>
            <div className="flex items-center gap-3">
-             <Link to="/admin" className="text-[10px] font-black uppercase text-gray-400">Admin</Link>
-             <button onClick={handleLogout} className="text-[10px] font-black uppercase text-red-400">Exit</button>
-             <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center border border-green-100">
-               <span className="text-[10px] font-black text-green-700">{data.currentUser.name[0]}</span>
-             </div>
+             {data.currentUser ? (
+               <>
+                 <Link to="/admin" className="text-[10px] font-black uppercase text-gray-400">Dashboard</Link>
+                 <button onClick={handleLogout} className="text-[10px] font-black uppercase text-red-400">Exit</button>
+                 <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center border border-green-100">
+                   <span className="text-[10px] font-black text-green-700">{data.currentUser.name[0]}</span>
+                 </div>
+               </>
+             ) : (
+               <Link to="/admin" className="text-[10px] font-black uppercase text-gray-400 border border-gray-100 px-3 py-1 rounded-lg">Partner Portal</Link>
+             )}
            </div>
         </header>
 
-        <main className="flex-1">
+        <main className="flex-1 pb-20">
           <Routes>
             <Route path="/" element={<Home restaurants={data.restaurants} />} />
-            <Route path="/restaurant/:id" element={<RestaurantMenu restaurants={data.restaurants} items={data.menuItems} cart={cart} onAddToCart={addToCart} onUpdateCart={(id, delta) => {/* Implemented in RestaurantMenu */}} onRemoveFromCart={() => {/* Implemented in RestaurantMenu */}} />} />
+            <Route path="/restaurant/:id" element={<RestaurantMenu restaurants={data.restaurants} items={data.menuItems} cart={cart} onAddToCart={addToCart} onUpdateCart={updateCart} onRemoveFromCart={(id) => id === 'all' ? setCart([]) : updateCart(id, -999)} />} />
             <Route path="/checkout" element={<Checkout cart={cart} restaurants={data.restaurants} lastOrderId={data.lastOrderId} currentUser={data.currentUser} onOrderPlaced={() => setCart([])} refreshAppData={refreshData} />} />
             <Route path="/tracking/:id" element={<Tracking orders={data.orders} />} />
-            <Route path="/admin" element={<Admin data={data} onDataChange={refreshData} currentUser={data.currentUser} />} />
+            <Route path="/admin" element={data.currentUser ? <Admin data={data} onDataChange={refreshData} currentUser={data.currentUser} /> : <Login onLogin={handleLogin} />} />
           </Routes>
         </main>
+
+        <ActiveOrderTracker orders={data.orders} />
       </div>
     </HashRouter>
   );

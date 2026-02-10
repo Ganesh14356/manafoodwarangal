@@ -34,11 +34,22 @@ export interface Restaurant {
   adminUser: string;
   adminPass: string;
   phone: string;
+  address?: string;
   location?: { lat: number; lng: number };
 }
 
 export interface CartItem extends MenuItem {
   quantity: number;
+}
+
+export interface Review {
+  id: string;
+  orderId: string;
+  restaurantId: string;
+  customerName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
 }
 
 export interface Order {
@@ -58,17 +69,25 @@ export interface Order {
   locationUrl: string;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
-  paymentMethod: 'UPI' | 'COD';
+  paymentMethod: 'UPI';
   createdAt: string;
+  isReviewed?: boolean;
+  // Logistics Metadata
+  logistics?: {
+    roadDistanceKm: number;
+    estimatedTimeMin: number;
+    routeSummary: string;
+    isFeeConfirmed: boolean;
+  };
 }
 
-export interface Settlement {
-  date: string;
-  totalOrders: number;
-  grossSales: number;
-  platformEarnings: number;
-  restaurantPayout: number;
-  riderPayout: number;
+export interface AppData {
+  restaurants: Restaurant[];
+  menuItems: MenuItem[];
+  orders: Order[];
+  reviews: Review[];
+  lastOrderId: number;
+  currentUser: User | null;
 }
 
 export interface User {
@@ -76,13 +95,5 @@ export interface User {
   phone: string;
   name: string;
   role: 'Customer' | 'Restaurant' | 'Admin';
-  restaurantId?: string; // Optional, linked for restaurant admins
-}
-
-export interface AppData {
-  restaurants: Restaurant[];
-  menuItems: MenuItem[];
-  orders: Order[];
-  lastOrderId: number;
-  currentUser: User | null;
+  restaurantId?: string;
 }
